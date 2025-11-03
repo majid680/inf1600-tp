@@ -4,37 +4,36 @@
 blur:
     pushl %ebp
     movl %esp, %ebp
-    subl $32, %esp           # espace pour variables locales
+    subl $32, %esp           # on réserve un peu de place pour nos variables
     pushl %ebx
     pushl %esi
     pushl %edi
     
-    movl 8(%ebp), %ebx           # img (où on écrit le résultat)
-    movl 12(%ebp), %esi          # imgCopy (copie pour lire les voisins)
-    movl (%ebx), %eax            # largeur
+    movl 8(%ebp), %ebx           #  on va écrire le résultat sur ebx
+    movl 12(%ebp), %esi          # imgCopy -> copie pour lire les voisins sans toucher img
+    movl (%ebx), %eax            # récupérer largeur
     movl %eax, -12(%ebp)
-    movl 4(%ebx), %eax           # hauteur
+    movl 4(%ebx), %eax           # récupérer hauteur
     movl %eax, -8(%ebp)
     
-    # récupérer le tableau de pixels
+    # récupérer les tableaux de pixels
     movl 8(%ebx), %ebx           # img->pixels
     movl 8(%esi), %eax           # imgCopy->pixels
     movl %eax, -4(%ebp)
 
-    # commencer à la ligne 1 (ignorer la bordure)
-    movl $1, %edi
-y_loop:
+    movl $1, %edi                # on commence à la ligne 1 (bordure exclue)
+loopY:
     movl -8(%ebp), %eax
     decl %eax                    # hauteur - 1
     cmpl %eax, %edi
-    jge end
-    
-    movl $1, %esi                 # commencer à la colonne 1
-x_loop:
+    jge end                       # si on a fini les lignes, on sort
+
+    movl $1, %esi                 # on commence à la colonne 1
+loopX:
     movl -12(%ebp), %eax
     decl %eax                     # largeur - 1
     cmpl %eax, %esi
-    jge next_y
+    jge next_y                    # si fini colonnes, on passe à la ligne suivante
 
     # remettre à zéro les compteurs et sommes
     movl $0, -28(%ebp)           # nombre de pixels qu'on va utiliser
@@ -42,44 +41,42 @@ x_loop:
     movl $0, -20(%ebp)           # somme des verts
     movl $0, -16(%ebp)           # somme des bleus
 
-    # boucle sur les voisins y (-1 à 1)
-    movl $-1, %ecx
-neighbor_y:
+    movl $-1, %ecx               # dy = -1
+neighborY:
     cmpl $1, %ecx
-    jg neighbor_y_end
+    jg neighborYEnd
     
-    # boucle sur les voisins x (-1 à 1)
-    movl $-1, %edx
-neighbor_x:
+    movl $-1, %edx               # dx = -1
+neighborX:
     cmpl $1, %edx
-    jg neighbor_x_end
+    jg neighborXEnd
     
-    # calculer la position du voisin
+    # calculer coordonnée du voisin
     movl %esi, %eax
     addl %edx, %eax              # x + dx
     movl %edi, %ebx
     addl %ecx, %ebx              # y + dy
 
-    # vérifier que le voisin est dans l'image
+    # vérifier que le voisin est bien dans l'image
     pushl %edx
     pushl %ecx
     cmpl $0, %eax
-    jl next_neighbor_pop
+    jl nextNeighborPop
     movl -12(%ebp), %ecx
     cmpl %ecx, %eax
-    jge next_neighbor_pop
+    jge nextNeighborPop
     cmpl $0, %ebx
-    jl next_neighbor_pop
+    jl nextNeighborPop
     movl -8(%ebp), %ecx
     cmpl %ecx, %ebx
-    jge next_neighbor_pop
+    jge next
 
     # récupérer le pixel dans imgCopy
     movl -4(%ebp), %ecx
     movl (%ecx,%ebx,4), %ecx     # ligne y
     leal (%ecx,%eax,4), %ecx     # pixel x
 
-    # ajouter les couleurs à la somme
+    # ajouter ses couleurs aux sommes
     movzbl 2(%ecx), %eax         # rouge
     addl %eax, -24(%ebp)
     movzbl 1(%ecx), %eax         # vert
@@ -87,43 +84,41 @@ neighbor_x:
     movzbl (%ecx), %eax          # bleu
     addl %eax, -16(%ebp)
     
-    incl -28(%ebp)               
+    incl -28(%ebp)               # on compte ce pixel
 
-next_neighbor_pop:
+nextNeighborPop:
     popl %ecx
     popl %edx
     incl %edx
-    jmp neighbor_x
+    jmp neighborX
 
-neighbor_x_end:
+neighborXEnd:
     incl %ecx
-    jmp neighbor_y
+    jmp neighborY
 
-neighbor_y_end:
-    # vérifier qu'on a au moins un voisin
+neighborYEnd:
+    # si on a des voisins
     movl -28(%ebp), %eax
     cmpl $0, %eax
-    je next_pixel
+    je nextPixel
     
-    # moyenne  pour rouge
+    # moyenne pour chaque couleur
     movl -24(%ebp), %eax
     movl $0 ,%edx
     divl -28(%ebp)
-    movb %al, %cl
+    movb %al, %cl                # rouge moyen
     
-    # moyenne vert
     movl -20(%ebp), %eax
     movl $0 ,%edx
     divl -28(%ebp)
-    movb %al, %ch
+    movb %al, %ch                # vert moyen
     
-    # moyenne bleu
     movl -16(%ebp), %eax
     movl $0 ,%edx
     divl -28(%ebp)
-    movb %al, %dl
-    
-    # mettre les moyennes dans img
+    movb %al, %dl                # bleu moyen
+
+    # mettre le pixel moyen dans img
     movl 8(%ebp), %ebx
     movl 8(%ebx), %ebx
     movl (%ebx,%edi,4), %ebx
@@ -132,13 +127,13 @@ neighbor_y_end:
     movb %ch, 1(%ebx)
     movb %dl, (%ebx)
 
-next_pixel:
+nextPixel:
     incl %esi
-    jmp x_loop
+    jmp loopX
 
 next_y:
     incl %edi
-    jmp y_loop
+    jmp loopY
 
 end:
     popl %edi
