@@ -1,5 +1,11 @@
-.text
-.globl blur
+.data 
+dx:
+    .word  -1                        
+dy:
+    .word  -1                        
+
+.text 
+.globl blur                      
 
 blur:
     pushl %ebp
