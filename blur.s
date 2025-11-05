@@ -10,7 +10,7 @@ dy:
 blur:
     pushl %ebp
     movl %esp, %ebp
-    subl $32, %esp           # on réserve un peu de place pour nos variables
+    subl $32, %esp           # on réserve un peu de la place pour nos variables
     pushl %ebx
     pushl %esi
     pushl %edi

@@ -1,7 +1,6 @@
 .text
 .globl invert
 
-# void invert(Image *img)
 invert:
     pushl %ebp
     movl %esp, %ebp
@@ -9,57 +8,51 @@ invert:
     pushl %esi
     pushl %edi
 
-    movl 8(%ebp), %ebx       # %ebx = stocke le double pointeurs image (tableau de pixel)
-    movl 4(%ebp), %esi       # stocke l'hauteur
-    movl 0(%ebp), %edi       # stocke la largeur
+    movl 8(%ebp), %ecx
+    movl (%ecx), %edi
+    movl 4(%ecx), %esi
+    movl 8(%ecx), %ebx
 
-    movl $0, %edx         # y = 0
+    movl $0, %edx
+
 vertical:
-    cmpl %esi, %edx          # condition d'arret y >= hauteur
+    cmpl %esi, %edx
     jge end
 
-    # récupérer ligne y
-    movl (%ebx,%edx,4), %edi   #
+    movl (%ebx, %edx, 4), %eax
+    movl $0, %ecx
 
-    movl $0, %ecx      # x = 0
 horizontal:
-    cmpl %edi, %ecx          # condition d'arret x >= largeur
-    jge nextRow
+    cmpl %edi, %ecx
+    jge nextLine
 
-    # adresse pixel = ligne + x*4
-    movl %ecx, %eax
-    imull $4, %eax
-    movl %edi, %ebx
-    addl %eax, %ebx          # ebx = &pixels[y][x]
-
-    # charger B, G, R
-    movzbl 0(%ebx), %al   # bleu
-    movzbl 1(%ebx), %dl   # vert
-    movzbl 2(%ebx), %cl   # rouge
-             
-    movb $255, %ah 
-    subb %al, %ah   # 255 - couleur
-    movb %ah, 0(%ebx)  # stocke le resultat dans la premiere 8bits du ebx
-
+    leal (%eax, %ecx, 4), %edx
+    
+    movb (%edx), %al
     movb $255, %ah
-    subb %dl, %ah
-    movb %ah, 1(%ebx)
+    subb %al, %ah
+    movb %ah, (%edx)
 
+    movb 1(%edx), %al
     movb $255, %ah
-    subb %cl, %ah
-    movb %ah, 2(%ebx)
-    # alpha reste inchangé
+    subb %al, %ah
+    movb %ah, 1(%edx)
 
-    incl %ecx   # passer à la prochaine colonne
+    movb 2(%edx), %al
+    movb $255, %ah
+    subb %al, %ah
+    movb %ah, 2(%edx)
+
+    incl %ecx
     jmp horizontal
 
-nextRow:
-    incl %edx    # passer à la ligne suivante
+nextLine:
+    incl %edx
     jmp vertical
 
 end:
     popl %edi
     popl %esi
     popl %ebx
-    leave
+    leave 
     ret
